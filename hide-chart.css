@@ -89,7 +89,7 @@ div.flex.flex-col.items-center:has(> button:only-child > a[href$="/tos"]) {
   justify-content: center;
   width: 18px;
   height: 18px;
-  margin-right: 5px;
+  margin-left: 5px;
   box-sizing: border-box;
   border: 1px dashed currentColor;
   border-radius: 50%;

@@ -2,7 +2,9 @@
   "use strict";
 
   const markerClass = "pm-local-round-estimate";
+  const storageKey = "pm-local-round-prices-v1";
   const results = new Map();
+  let sourceCache = null;
   let pendingKey = null;
   let nextRequestAt = 0;
   let scheduled = false;
@@ -25,13 +27,33 @@
 
     // Match the site's actual query, including its TWAP settings. Never
     // substitute spot prices or infer a price source from the coin alone.
-    const template = performance.getEntriesByType("resource").slice().reverse()
+    let template = performance.getEntriesByType("resource").slice().reverse()
       .map((entry) => new URL(entry.name, location.href))
       .find((url) => url.origin === location.origin &&
         url.pathname === "/api/crypto/crypto-price" &&
         url.searchParams.get("symbol") === current.symbol &&
-        Date.parse(url.searchParams.get("eventStartTime")) === current.start * 1000);
+        Date.parse(url.searchParams.get("eventStartTime")) === current.start * 1000 &&
+        Date.parse(url.searchParams.get("endDate")) === current.end * 1000);
+    if (!template && sourceCache?.start === current.start && sourceCache.end === current.end &&
+        sourceCache.symbol === current.symbol) {
+      template = sourceCache.url;
+    }
+    // A hydrated opening price may not trigger any client-side HTTP request.
+    if (!template) {
+      const query = Array.from(priceQueries(document)).find(({ queryKey: key }) =>
+        key?.[2] === current.symbol && Date.parse(key[3]) === current.start * 1000 &&
+        Date.parse(key[5]) === current.end * 1000);
+      if (query) {
+        const key = query.queryKey;
+        template = new URL("/api/crypto/crypto-price", location.origin);
+        template.search = new URLSearchParams({ symbol: key[2], eventStartTime: key[3],
+          variant: key[4], endDate: key[5], twapEnabled: String(Boolean(key[6])),
+          ...(key[6] ? { twapLookbackSeconds: String(key[7]) } : {}) }).toString();
+      }
+    }
     if (!template) return null;
+    sourceCache = { start: current.start, end: current.end, symbol: current.symbol, url: template };
+    captureEnd(chart, current, template);
 
     const candidates = Array.from(bar.querySelectorAll("a[href]"))
       .filter((anchor) => !anchor.closest("#price-chart-container"))
@@ -50,6 +72,7 @@
     const iso = (seconds) => new Date(seconds * 1000).toISOString().replace(".000Z", "Z");
     url.searchParams.set("eventStartTime", iso(candidate.info.start));
     url.searchParams.set("endDate", iso(candidate.info.end));
+    url.searchParams.sort();
     return { bar, candidate, key: url.href, url, current };
   }
 
@@ -72,31 +95,70 @@
     if (!marker) {
       marker = document.createElement("span");
       marker.className = markerClass;
-      (anchor.querySelector(":scope > div") || anchor).prepend(marker);
+      (anchor.querySelector(":scope > div") || anchor).append(marker);
     }
-    const signature = `${state.key}:${result.open}:${result.close}`;
+    const signature = `${state.key}:${result.open}:${result.close}:${Boolean(result.approximate)}`;
     if (marker.dataset.signature === signature) return;
     marker.dataset.signature = signature;
     marker.dataset.direction = result.direction;
     marker.textContent = result.direction === "up" ? "↑" : "↓";
     marker.setAttribute("aria-label", `按价格暂判 ${result.direction.toUpperCase()}，非官方结果`);
     marker.title = `目标价：${result.open}\n结束价：${result.close}\n` +
+      (result.approximate ? "当前为价格暂判；原站价格数据更新后自动校正。\n" : "") +
       "按价格暂判，非官方结算；官方方向出现后自动移除。";
   }
 
-  function remember(key, data) {
+  function loadSaved() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+      for (const [key, value] of Object.entries(saved)) {
+        if (price(value?.open) === null || price(value?.close) === null ||
+            !Number.isFinite(value.at) || value.at > Date.now() ||
+            Date.now() - value.at > 86400000) continue;
+        const existing = results.get(key);
+        if (!existing || (existing.approximate && !value.approximate)) {
+          results.set(key, { ...value, direction: value.close >= value.open ? "up" : "down" });
+        }
+      }
+    } catch { /* Public price caching is optional; other site storage is untouched. */ }
+  }
+
+  function remember(key, data, approximate = false) {
     const open = price(data?.openPrice);
     const close = price(data?.closePrice);
     if (open === null || close === null) return false;
-    results.set(key, { open, close, direction: close >= open ? "up" : "down" });
+    if (approximate && results.has(key) && !results.get(key).approximate) return true;
+    results.set(key, { open, close, approximate, at: Date.now(), direction: close >= open ? "up" : "down" });
+    try {
+      const recent = Array.from(results).sort((a, b) => b[1].at - a[1].at).slice(0, 20);
+      localStorage.setItem(storageKey, JSON.stringify(Object.fromEntries(recent)));
+    } catch { /* Continue without persistence if site storage is unavailable. */ }
     return true;
+  }
+
+  function captureEnd(chart, current, template) {
+    // Retain the actual ended page's displayed values across a full reload.
+    // Never sample an active round or a historical page showing a live feed.
+    const elapsed = Date.now() - current.end * 1000;
+    if (elapsed < 0 || elapsed > 10000) return;
+    const values = Array.from(chart.querySelectorAll("span.text-heading-2xl"))
+      .map((element) => (element.querySelector(".pk-animated-label__text") || element).textContent.trim())
+      .filter((text) => /^\$[\d,]+\.\d{2}$/.test(text))
+      .map((text) => Number(text.replace(/[$,]/g, "")));
+    // Rounded equal displays cannot establish the raw direction safely.
+    if (values.length !== 2 || values[0] === values[1]) return;
+    const url = new URL(template);
+    url.searchParams.set("eventStartTime", new Date(current.start * 1000).toISOString().replace(".000Z", "Z"));
+    url.searchParams.set("endDate", new Date(current.end * 1000).toISOString().replace(".000Z", "Z"));
+    url.searchParams.sort();
+    if (results.has(url.href)) return;
+    remember(url.href, { openPrice: values[0], closePrice: values[1] }, true);
   }
 
   // The ended event's server snapshot can already contain both chart prices
   // while the separately cached price API still reports an incomplete window.
   // Parse data only: never execute scripts from the fetched event page.
-  function chartSnapshot(html, state) {
-    const doc = new DOMParser().parseFromString(html, "text/html");
+  function* priceQueries(doc) {
     const stream = Array.from(doc.scripts).map((script) => {
       const match = script.textContent.trim().match(/^self\.__next_f\.push\(([\s\S]*)\);?$/);
       if (!match) return "";
@@ -122,21 +184,46 @@
         else if ((char === "}" || char === "]") && --depth === 0) {
           try {
             const query = JSON.parse(stream.slice(start, end + 1));
-            const key = query.queryKey;
-            const params = state.url.searchParams;
-            if (key?.[2] === state.current.symbol &&
-                Date.parse(key[3]) === state.candidate.info.start * 1000 &&
-                key[4] === params.get("variant") &&
-                Date.parse(key[5]) === state.candidate.info.end * 1000 &&
-                Boolean(key[6]) === (params.get("twapEnabled") === "true") &&
-                (!key[6] || Number(key[7]) === Number(params.get("twapLookbackSeconds"))) &&
-                query.state?.status === "success" &&
-                query.state.dataUpdatedAt >= state.candidate.info.end * 1000 &&
-                price(query.state.data?.openPrice) !== null &&
-                price(query.state.data?.closePrice) !== null) return query.state.data;
+            yield query;
           } catch { /* Ignore incomplete or unrelated serialized records. */ }
           break;
         }
+      }
+    }
+  }
+
+  function chartSnapshot(html, state) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const params = state.url.searchParams;
+    const matches = (query, info) => {
+      const key = query.queryKey;
+      return key?.[2] === state.current.symbol &&
+          Date.parse(key[3]) === info.start * 1000 &&
+          key[4] === params.get("variant") &&
+          Date.parse(key[5]) === info.end * 1000 &&
+          Boolean(key[6]) === (params.get("twapEnabled") === "true") &&
+          (!key[6] || Number(key[7]) === Number(params.get("twapLookbackSeconds"))) &&
+          query.state?.status === "success" &&
+          query.state.dataUpdatedAt >= info.start * 1000;
+    };
+    const previous = Array.from(priceQueries(doc)).find((query) => matches(query, state.candidate.info));
+    if (previous) {
+      const query = previous;
+      if (query.state.dataUpdatedAt >= state.candidate.info.end * 1000 &&
+          price(query.state.data?.openPrice) !== null &&
+          price(query.state.data?.closePrice) !== null) return query.state.data;
+    }
+    // Adjacent windows share the exact boundary timestamp. With the same
+    // price stream, variant and TWAP window, the new opening target is also
+    // the prior closing boundary price. This is a provisional calculation,
+    // never the new window's moving current price or an official outcome.
+    if (previous && state.candidate.info.end === state.current.start &&
+        state.current.start * 1000 <= Date.now() &&
+        price(previous.state.data?.openPrice) !== null) {
+      const opening = Array.from(priceQueries(document)).find((query) => matches(query, state.current));
+      if (price(opening?.state.data?.openPrice) !== null) {
+        return { openPrice: previous.state.data.openPrice,
+          closePrice: opening.state.data.openPrice, provisional: true };
       }
     }
     return null;
@@ -157,18 +244,22 @@
     scheduled = false;
     const state = context();
     render(state);
-    if (!state || document.hidden || results.has(state.key) || pendingKey ||
+    if (!state || document.hidden || (results.has(state.key) && !results.get(state.key).approximate) || pendingKey ||
         Date.now() < nextRequestAt) return;
     pendingKey = state.key;
     try {
       try {
         const data = await read(state.url, "json");
-        if (data?.completed === true && data.incomplete === false && remember(state.key, data)) return;
+        const provisional = data?.completed !== true || data.incomplete !== false;
+        if (remember(state.key, data, provisional)) {
+          if (!provisional) return;
+          render(context());
+        }
       } catch { /* Try the ended event's own chart snapshot next. */ }
       const html = await read(state.candidate.url, "text");
       if (html) {
         const data = chartSnapshot(html, state);
-        if (data) remember(state.key, data);
+        if (data) remember(state.key, data, data.provisional === true);
       }
     } catch {
       // Never invent a direction when neither price source is ready.
@@ -186,10 +277,14 @@
   }
 
   function start() {
+    loadSaved();
     new MutationObserver((changes) => {
       if (changes.some((change) => !change.target.closest?.(`.${markerClass}`))) schedule();
     }).observe(document.documentElement, { childList: true, subtree: true });
     window.addEventListener("popstate", schedule);
+    window.addEventListener("storage", (event) => {
+      if (event.key === storageKey) { loadSaved(); schedule(); }
+    });
     document.addEventListener("visibilitychange", schedule);
     setInterval(schedule, 3000);
     schedule();
