@@ -192,12 +192,10 @@
     }
   }
 
-  function chartSnapshot(html, state) {
-    const doc = new DOMParser().parseFromString(html, "text/html");
+  function matchesPriceQuery(query, info, state) {
     const params = state.url.searchParams;
-    const matches = (query, info) => {
-      const key = query.queryKey;
-      return key?.[2] === state.current.symbol &&
+    const key = query.queryKey;
+    return key?.[2] === state.current.symbol &&
           Date.parse(key[3]) === info.start * 1000 &&
           key[4] === params.get("variant") &&
           Date.parse(key[5]) === info.end * 1000 &&
@@ -205,8 +203,32 @@
           (!key[6] || Number(key[7]) === Number(params.get("twapLookbackSeconds"))) &&
           query.state?.status === "success" &&
           query.state.dataUpdatedAt >= info.start * 1000;
-    };
-    const previous = Array.from(priceQueries(doc)).find((query) => matches(query, state.candidate.info));
+  }
+
+  function boundaryPrices(state, previousOpen) {
+    if (price(previousOpen) === null || state.candidate.info.end !== state.current.start ||
+        state.current.start * 1000 > Date.now()) return null;
+    const opening = Array.from(priceQueries(document))
+      .find((query) => matchesPriceQuery(query, state.current, state));
+    let close = price(opening?.state.data?.openPrice);
+    if (close === null) {
+      // Client-side navigation may leave only the original page's hydration.
+      // Read the labelled opening target, never the moving current price.
+      const node = state.bar.querySelector("#price-chart-container span.text-heading-2xl");
+      const text = (node?.querySelector(".pk-animated-label__text") || node)?.textContent.trim();
+      if (!/目标价格|price\s*to\s*beat/i.test(node?.parentElement.textContent || "") ||
+          !/^\$[\d,]+\.\d{2}$/.test(text || "")) return null;
+      close = price(text.replace(/[$,]/g, ""));
+      // A two-decimal display cannot resolve differences within its rounding.
+      if (close === null || Math.abs(close - previousOpen) <= 0.005) return null;
+    }
+    return { openPrice: previousOpen, closePrice: close, provisional: true };
+  }
+
+  function chartSnapshot(html, state) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const previous = Array.from(priceQueries(doc))
+      .find((query) => matchesPriceQuery(query, state.candidate.info, state));
     if (previous) {
       const query = previous;
       if (query.state.dataUpdatedAt >= state.candidate.info.end * 1000 &&
@@ -217,16 +239,7 @@
     // price stream, variant and TWAP window, the new opening target is also
     // the prior closing boundary price. This is a provisional calculation,
     // never the new window's moving current price or an official outcome.
-    if (previous && state.candidate.info.end === state.current.start &&
-        state.current.start * 1000 <= Date.now() &&
-        price(previous.state.data?.openPrice) !== null) {
-      const opening = Array.from(priceQueries(document)).find((query) => matches(query, state.current));
-      if (price(opening?.state.data?.openPrice) !== null) {
-        return { openPrice: previous.state.data.openPrice,
-          closePrice: opening.state.data.openPrice, provisional: true };
-      }
-    }
-    return null;
+    return boundaryPrices(state, price(previous?.state.data?.openPrice));
   }
 
   async function read(url, type) {
@@ -254,6 +267,13 @@
         if (remember(state.key, data, provisional)) {
           if (!provisional) return;
           render(context());
+        }
+        // The prior opening target is already in this compact API response.
+        // Do not wait for a historical HTML request to retrieve it a second time.
+        const boundary = boundaryPrices(state, price(data?.openPrice));
+        if (boundary) {
+          remember(state.key, boundary, true);
+          return;
         }
       } catch { /* Try the ended event's own chart snapshot next. */ }
       const html = await read(state.candidate.url, "text");
