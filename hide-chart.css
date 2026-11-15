@@ -25,6 +25,12 @@ div.box-border:has(> div > div > #price-chart-container) {
   visibility: hidden !important;
 }
 
+/* Hide native trade amount animations and the ROI badge beside this chart. */
+div.overflow-visible.relative:has(#price-chart-container) [data-trade-flurry-row],
+div.overflow-visible.relative:has(#price-chart-container) > div.absolute.left-0.z-10.rounded-full {
+  display: none !important;
+}
+
 /* Hide the requested market heading row together with its sticky padding. */
 body:has(#price-chart-container) div.sticky:has(> div.w-full.justify-between > div > div > h1) {
   display: none !important;
