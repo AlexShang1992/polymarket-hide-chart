@@ -1,0 +1,83 @@
+/*
+ * The price/countdown header is an absolutely positioned sibling of the plot.
+ * Keep the chart's measured size: Polymarket unmounts the plot AND price header
+ * at zero height. Cancel only the outer layout space, independently of whether
+ * the inner plot currently exists. This avoids the old resize/remount cycle.
+ */
+#price-chart-container {
+  margin-bottom: calc(0px - var(--chart-height, 288px)) !important;
+}
+
+/* The outer chart section also reserves a minimum height to prevent layout
+ * shifts. Release that reservation after canceling the plot's layout space. */
+div.box-border:has(> div > div > #price-chart-container) {
+  min-height: 0 !important;
+}
+
+/* Hide paint, not layout, so the chart's size observers see stable dimensions. */
+#price-chart-container div:has(> .tv-lightweight-charts) {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* This source badge belongs to the hidden plot, not to the price header. */
+#price-chart-container > div > .pointer-events-none {
+  visibility: hidden !important;
+}
+
+/* Hide the requested market heading row together with its sticky padding. */
+body:has(#price-chart-container) div.sticky:has(> div.w-full.justify-between > div > div > h1) {
+  display: none !important;
+}
+
+/* The trade notice has its own single-button wrapper. Keep footer links. */
+div.flex.flex-col.items-center:has(> button:only-child > a[href$="/tos"]) {
+  display: none !important;
+}
+
+/* Only the small market title above Up/Down in the trade card. */
+#trade-widget div.flex.flex-col > span.truncate.text-pk-content-secondary:has(+ span > span.shrink-0) {
+  display: none !important;
+}
+
+/* Hide the whole related-crypto section: separator, periods and other coins. */
+#trade-widget div.mt-7:has(> div > div > a[href*="/event/"][href*="-updown-"]) {
+  display: none !important;
+}
+
+#pm-local-trend-toolbar {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+}
+
+#pm-local-trend-toolbar > .pm-local-trend-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  height: 32px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  border: 1px solid var(--color-pk-border, #34373f);
+  border-radius: 8px;
+  background: var(--color-pk-elevated, #1d2028);
+  color: var(--color-pk-content-primary, #f5f6f7);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none !important;
+  cursor: pointer;
+}
+
+#pm-local-trend-toolbar > .pm-local-trend-link:hover {
+  background: var(--color-button-secondary-bg-hover, #30343d);
+}
+
+#pm-local-trend-toolbar > .pm-local-trend-link:focus-visible {
+  outline: 2px solid #5b8cff;
+  outline-offset: 2px;
+}
