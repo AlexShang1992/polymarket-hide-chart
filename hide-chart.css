@@ -81,3 +81,37 @@ div.flex.flex-col.items-center:has(> button:only-child > a[href$="/tos"]) {
   outline: 2px solid #5b8cff;
   outline-offset: 2px;
 }
+
+#pm-local-round-result {
+  position: relative;
+  z-index: 2;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+#pm-local-round-result > a {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-pk-border, #34373f);
+  border-radius: 8px;
+  color: var(--color-pk-content-primary, #f5f6f7);
+  background: var(--color-pk-elevated, #1d2028);
+  text-decoration: none;
+}
+
+#pm-local-round-result[data-direction="up"] .pm-local-round-direction {
+  color: var(--color-pk-green-500, #27c98b);
+}
+
+#pm-local-round-result[data-direction="down"] .pm-local-round-direction {
+  color: var(--color-pk-red-500, #f45b69);
+}
+
+#pm-local-round-result .pm-local-round-note,
+#pm-local-round-result[data-direction="pending"] .pm-local-round-direction {
+  color: var(--color-pk-content-secondary, #a0a7b4);
+  font-size: 12px;
+}
