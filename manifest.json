@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Polymarket · 隐藏原生曲线",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "隐藏 Polymarket 指定区域，整页切换期次，并提供币安 BTC/USDT 趋势入口。",
   "minimum_chrome_version": "105",
   "content_scripts": [
@@ -11,7 +11,7 @@
         "https://www.polymarket.com/*"
       ],
       "css": ["hide-chart.css"],
-      "js": ["round-navigation.js", "trend-link.js", "round-result.js"],
+      "js": ["round-navigation.js", "trend-link.js", "streak-stats.js", "round-result.js"],
       "run_at": "document_start"
     }
   ]

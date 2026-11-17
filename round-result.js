@@ -23,7 +23,10 @@
     const chart = Array.from(document.querySelectorAll("#price-chart-container"))
       .find((element) => element.getClientRects().length > 0);
     const bar = chart?.parentElement?.parentElement;
-    if (!current || !bar?.matches("div.relative.flex.flex-col")) return null;
+    if (!current || !bar?.matches("div.relative.flex.flex-col")) {
+      globalThis.pmLocalStreaks?.update(null);
+      return null;
+    }
 
     // Match the site's actual query, including its TWAP settings. Never
     // substitute spot prices or infer a price source from the coin alone.
@@ -54,6 +57,7 @@
     if (!template) return null;
     sourceCache = { start: current.start, end: current.end, symbol: current.symbol, url: template };
     captureEnd(chart, current, template);
+    globalThis.pmLocalStreaks?.update({ current, priceUrl: template, prices: results });
 
     const candidates = Array.from(bar.querySelectorAll("a[href]"))
       .filter((anchor) => !anchor.closest("#price-chart-container"))
