@@ -25,6 +25,12 @@ div.box-border:has(> div > div > #price-chart-container) {
   visibility: hidden !important;
 }
 
+/* Hide only the navigation brand and the brand beside the countdown. */
+body:has(#price-chart-container) nav[aria-label="Main"] a[aria-label="Polymarket Logo"],
+#price-chart-container svg[aria-labelledby~="polymarket-logo-title"] {
+  display: none !important;
+}
+
 /* Hide native trade amount animations and the ROI badge beside this chart. */
 div.overflow-visible.relative:has(#price-chart-container) [data-trade-flurry-row],
 div.overflow-visible.relative:has(#price-chart-container) > div.absolute.left-0.z-10.rounded-full {
