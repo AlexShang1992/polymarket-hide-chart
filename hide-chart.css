@@ -121,47 +121,17 @@ div.flex.flex-col.items-center:has(> button:only-child > a[href$="/tos"]) {
 }
 
 #pm-local-streak-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: block;
   flex: 1;
   min-width: 0;
-  gap: 8px;
-}
-
-.pm-local-streak-card {
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--color-pk-border, #34373f);
-  border-radius: 8px;
-  background: var(--color-pk-elevated, #1d2028);
-  line-height: 1.4;
-}
-
-.pm-local-streak-heading {
-  display: block;
   color: var(--color-pk-content-secondary, #a0a7b4);
-  font-size: 11px;
-}
-
-.pm-local-streak-values {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 10px;
-  margin-top: 3px;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 400;
+  line-height: 1.7;
   font-variant-numeric: tabular-nums;
 }
 
-.pm-local-streak-up { color: var(--color-pk-green-500, #27c98b); }
-.pm-local-streak-down { color: var(--color-pk-red-500, #f45b69); }
-
-.pm-local-streak-note {
-  display: block;
-  margin-top: 2px;
-  font-size: 10px;
-  color: var(--color-pk-content-secondary, #a0a7b4);
-}
+.pm-local-streak-line { white-space: nowrap; }
 
 #pm-local-trend-toolbar:has(#pm-local-streak-stats) > .pm-local-trend-link {
   flex-shrink: 0;
@@ -169,6 +139,4 @@ div.flex.flex-col.items-center:has(> button:only-child > a[href$="/tos"]) {
 
 @media (max-width: 550px) {
   #pm-local-trend-toolbar:has(#pm-local-streak-stats) { gap: 6px; }
-  #pm-local-streak-stats { gap: 4px; }
-  .pm-local-streak-card { padding: 6px; }
 }
