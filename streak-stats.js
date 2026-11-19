@@ -3,7 +3,8 @@
 
   const panelId = "pm-local-streak-stats";
   const cacheKey = "pm-local-streak-history-v1";
-  const windows = [["2小时", 7200], ["6小时", 21600], ["24小时", 86400]];
+  const windows = [["2小时", 7200], ["6小时", 21600], ["24小时", 86400], ["72小时", 259200]];
+  const historySeconds = windows[windows.length - 1][1];
   let active = null;
   let pending = false;
   let scheduled = false;
@@ -101,9 +102,9 @@
     try {
       const saved = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
       if (saved?.series !== state.series || !Number.isFinite(saved.at) ||
-          saved.at > Date.now() || Date.now() - saved.at > 86400000 || !Array.isArray(saved.rows)) return;
+          saved.at > Date.now() || Date.now() - saved.at > historySeconds * 1000 || !Array.isArray(saved.rows)) return;
       for (const [start, row] of saved.rows) {
-        if (Number.isInteger(start) && start >= state.slot - 86400 && start < state.slot &&
+        if (Number.isInteger(start) && start >= state.slot - historySeconds && start < state.slot &&
             start % state.duration === 0 && ["up", "down"].includes(row?.direction) && !row.provisional) {
           state.rows.set(start, { direction: row.direction, provisional: false });
         }
@@ -166,7 +167,7 @@
 
   async function refreshHistory(state) {
     const starts = [];
-    for (let start = state.slot - state.duration; start >= state.slot - 86400; start -= state.duration) {
+    for (let start = state.slot - state.duration; start >= state.slot - historySeconds; start -= state.duration) {
       // Recheck recent results so official publication replaces provisional
       // prices; reuse older confirmed rounds cached for this browser tab.
       if (start >= state.slot - 50 * state.duration || !state.rows.has(start) || state.rows.get(start).provisional) starts.push(start);
@@ -207,7 +208,7 @@
     pending = true;
     try {
       // Start the latest-round price fallback immediately, independently of
-      // downloading a day's official history.
+      // downloading the full historical window.
       const jobs = [];
       if (Date.now() >= state.nextHistoryAt) jobs.push(refreshHistory(state));
       jobs.push(fillPrevious(state));
