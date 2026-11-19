@@ -56,30 +56,45 @@
     panel.dataset.slot = String(state.slot);
     panel.dataset.periodSeconds = String(state.duration);
     panel.replaceChildren();
+    const table = document.createElement("table");
+    const head = document.createElement("thead");
+    const header = document.createElement("tr");
+    for (const label of ["时间范围", "连续 UP", "连续 DOWN"]) {
+      const cell = document.createElement("th");
+      cell.scope = "col";
+      cell.textContent = label;
+      header.append(cell);
+    }
+    head.append(header);
+    const body = document.createElement("tbody");
     for (const [index, [label, seconds]] of windows.entries()) {
       const summary = summaries[index];
-      const group = document.createElement("div");
-      group.className = "pm-local-streak-group";
-      group.dataset.hours = String(seconds / 3600);
-      group.dataset.up = String(summary.up);
-      group.dataset.down = String(summary.down);
+      const row = document.createElement("tr");
+      row.dataset.hours = String(seconds / 3600);
+      row.dataset.up = String(summary.up);
+      row.dataset.down = String(summary.down);
+      const time = document.createElement("th");
+      time.scope = "row";
+      time.textContent = label;
+      row.append(time);
       const count = (direction) => summary.known ? `${summary.missing ? "≥" : ""}${summary[direction]}` : "—";
       for (const direction of ["up", "down"]) {
-        const line = document.createElement("div");
-        line.className = "pm-local-streak-line";
+        const cell = document.createElement("td");
         const number = document.createElement("strong");
         number.textContent = count(direction);
-        line.append(`${label}连续${direction.toUpperCase()} `, number, " 期");
-        group.append(line);
+        cell.append(" ", number, " 期");
+        row.append(cell);
       }
-      group.title = (state.loading ? "读取中…\n" : "") + (state.error ? "更新失败，自动重试中。\n" : "") +
+      row.title = (state.loading ? "读取中…\n" : "") + (state.error ? "更新失败，自动重试中。\n" : "") +
         `当前为${state.duration / 60}分钟一期。统计最近${seconds / state.duration}个已结束窗口，` +
         `不含当前运行期。UP／DOWN分别取最长连续期数，范围外不延长。\n` +
         `已知${summary.known}期，缺${summary.missing}期，按价格暂判${summary.provisional}期。` +
         (summary.missing ? "缺期会打断连续，≥表示已知数据的下限。" : "") +
         "官方结果优先；最终价大于或等于目标价暂判UP，否则暂判DOWN。";
-      panel.append(group);
+      body.append(row);
     }
+    table.append(head, body);
+    panel.append(table);
   }
 
   function loadCache(state) {

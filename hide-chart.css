@@ -125,17 +125,32 @@ div.flex.flex-col.items-center:has(> button:only-child > a[href$="/tos"]) {
   flex: 1;
   min-width: 0;
   color: var(--color-pk-content-secondary, #a0a7b4);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 400;
   line-height: 1.7;
   font-variant-numeric: tabular-nums;
 }
 
-.pm-local-streak-line { white-space: nowrap; }
+#pm-local-streak-stats table {
+  border-collapse: collapse;
+  font: inherit;
+  color: inherit;
+}
 
-.pm-local-streak-group + .pm-local-streak-group { margin-top: 1.7em; }
+#pm-local-streak-stats th,
+#pm-local-streak-stats td {
+  padding: 4px 12px;
+  text-align: left;
+  white-space: nowrap;
+  font-weight: 400;
+  border-bottom: 1px solid var(--color-pk-border, #34373f);
+}
 
-.pm-local-streak-line > strong { font-weight: 700; }
+#pm-local-streak-stats thead th { font-weight: 500; }
+#pm-local-streak-stats tr > :first-child { padding-left: 0; }
+#pm-local-streak-stats tr > :last-child { padding-right: 0; }
+#pm-local-streak-stats tbody tr:last-child > * { border-bottom: 0; }
+#pm-local-streak-stats td > strong { font-weight: 700; }
 
 #pm-local-trend-toolbar:has(#pm-local-streak-stats) > .pm-local-trend-link {
   flex-shrink: 0;
