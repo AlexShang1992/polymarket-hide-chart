@@ -133,8 +133,13 @@ div.flex.flex-col.items-center:has(> button:only-child > a[href$="/tos"]) {
 
 .pm-local-streak-line { white-space: nowrap; }
 
+.pm-local-streak-group + .pm-local-streak-group { margin-top: 1.7em; }
+
+.pm-local-streak-line > strong { font-weight: 700; }
+
 #pm-local-trend-toolbar:has(#pm-local-streak-stats) > .pm-local-trend-link {
   flex-shrink: 0;
+  align-self: flex-start;
 }
 
 @media (max-width: 550px) {

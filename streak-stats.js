@@ -3,7 +3,7 @@
 
   const panelId = "pm-local-streak-stats";
   const cacheKey = "pm-local-streak-history-v1";
-  const windows = [["24小时", 86400], ["1小时", 3600]];
+  const windows = [["2小时", 7200], ["6小时", 21600], ["24小时", 86400]];
   let active = null;
   let pending = false;
   let scheduled = false;
@@ -58,20 +58,27 @@
     panel.replaceChildren();
     for (const [index, [label, seconds]] of windows.entries()) {
       const summary = summaries[index];
-      const line = document.createElement("div");
-      line.className = "pm-local-streak-line";
-      line.dataset.hours = String(seconds / 3600);
-      line.dataset.up = String(summary.up);
-      line.dataset.down = String(summary.down);
+      const group = document.createElement("div");
+      group.className = "pm-local-streak-group";
+      group.dataset.hours = String(seconds / 3600);
+      group.dataset.up = String(summary.up);
+      group.dataset.down = String(summary.down);
       const count = (direction) => summary.known ? `${summary.missing ? "≥" : ""}${summary[direction]}` : "—";
-      line.textContent = `${label}连续up ${count("up")}期，连续down ${count("down")}期`;
-      line.title = (state.loading ? "读取中…\n" : "") + (state.error ? "更新失败，自动重试中。\n" : "") +
+      for (const direction of ["up", "down"]) {
+        const line = document.createElement("div");
+        line.className = "pm-local-streak-line";
+        const number = document.createElement("strong");
+        number.textContent = count(direction);
+        line.append(`${label}连续${direction.toUpperCase()} `, number, " 期");
+        group.append(line);
+      }
+      group.title = (state.loading ? "读取中…\n" : "") + (state.error ? "更新失败，自动重试中。\n" : "") +
         `当前为${state.duration / 60}分钟一期。统计最近${seconds / state.duration}个已结束窗口，` +
         `不含当前运行期。UP／DOWN分别取最长连续期数，范围外不延长。\n` +
         `已知${summary.known}期，缺${summary.missing}期，按价格暂判${summary.provisional}期。` +
         (summary.missing ? "缺期会打断连续，≥表示已知数据的下限。" : "") +
         "官方结果优先；最终价大于或等于目标价暂判UP，否则暂判DOWN。";
-      panel.append(line);
+      panel.append(group);
     }
   }
 
