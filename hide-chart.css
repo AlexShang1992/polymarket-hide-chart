@@ -25,6 +25,12 @@ div.box-border:has(> div > div > #price-chart-container) {
   visibility: hidden !important;
 }
 
+/* Enlarge only the live price-change arrow and amount. Zoom the whole readout
+ * so the site's animated digit offsets and clipping stay proportional. */
+#price-chart-container div.gap-1.justify-between > div.flex.items-center:has(> div > svg[viewBox="0 0 12 12"]):has(> div.overflow-hidden[style*="--height"]) {
+  zoom: 1.45 !important;
+}
+
 /* Hide only the navigation brand and the brand beside the countdown. */
 body:has(#price-chart-container) nav[aria-label="Main"] a[aria-label="Polymarket Logo"],
 #price-chart-container svg[aria-labelledby~="polymarket-logo-title"] {
