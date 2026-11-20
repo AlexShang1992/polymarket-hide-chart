@@ -52,8 +52,19 @@ div.flex.flex-col.items-center:has(> button:only-child > a[href$="/tos"]) {
   display: none !important;
 }
 
-/* Hide the whole related-crypto section: separator, periods and other coins. */
-#trade-widget div.mt-7:has(> div > div > a[href*="/event/"][href*="-updown-"]) {
+/* Hide only the Bitcoin icon in the trade-card header, keeping Up/Down. */
+#trade-widget div.flex.w-full.items-center.gap-3 > span[data-fade-root]:has(> img[src*="BTC"]) {
+  display: none !important;
+}
+
+/* Hide the whole related-crypto section, including its perpetuals tab.
+ * Tabs identify the section even when the selected list has no event links. */
+#trade-widget div.mt-7:has(a[href*="/event/"][href*="-updown-"], a[href*="/perps"], [data-arrow-visibility] button) {
+  display: none !important;
+}
+
+/* Hide chart-mode controls without changing the site's selected mode. */
+div.relative.flex.flex-col:has(> div > #price-chart-container) [style*="--tabs-asset-color"]:has([role="group"] > button[aria-pressed]) {
   display: none !important;
 }
 
