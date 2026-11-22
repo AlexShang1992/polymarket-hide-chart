@@ -3,7 +3,7 @@
 
   const panelId = "pm-local-streak-stats";
   const cacheKey = "pm-local-streak-history-v1";
-  const windows = [["2小时", 7200], ["6小时", 21600], ["24小时", 86400], ["72小时", 259200]];
+  const windows = [["2小时", 7200], ["6小时", 21600], ["24小时", 86400], ["72小时", 259200], ["7天", 604800]];
   const historySeconds = windows[windows.length - 1][1];
   let active = null;
   let pending = false;
@@ -196,6 +196,7 @@
       }));
     }
     if (active !== state) return;
+    state.nextHistoryAt = Date.now() + 15000;
     state.error = failures > 0;
     saveCache(state);
   }
